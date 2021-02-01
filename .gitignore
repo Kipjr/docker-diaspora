@@ -1,3 +1,4 @@
-data/postgres/databaseimage.img
+data/*
 log
-
+.DS_Store
+.AppleDouble

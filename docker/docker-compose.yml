@@ -1,22 +1,35 @@
-postgres:
-  build: database
-  environment:
-    - POSTGRES_USER=diaspora
-    - POSTGRES_PASSWORD=diaspora
-  volumes:
-    - ../data/postgres/:/var/lib/postgresql
+version: '2'
+services:
+  postgres:
+    image: postgres:9.5
+    environment:
+      - POSTGRES_USER=diaspora
+      - POSTGRES_PASSWORD=diaspora
+      - POSTGRES_DB=diaspora_production
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    privileged: true
 
-redis:
-  build: redis
+  redis:
+    image: redis:latest
+    command: redis-server --appendonly yes
+    volumes:
+      - redis:/data
 
-diaspora:
-  build: diaspora
-  links:
-    - postgres
-    - redis
-  volumes:
-    - home:/home
-    - ../config/diaspora:/home/diaspora/diaspora/config/remote-config
-  expose:
-    - "3000"
-  working_dir: /home/diaspora
+  diaspora:
+    build: diaspora
+    links:
+      - postgres
+      - redis
+    volumes:
+      - ../data/diaspora:/home/diaspora/
+      - ../config/diaspora:/config
+    ports:
+      - "3000"
+    working_dir: /home/diaspora
+    privileged: true
+
+volumes:
+  postgres:
+  redis:
+  diaspora:
