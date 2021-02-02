@@ -1,0 +1,55 @@
+version: '3'
+
+networks:
+  net:
+    driver: bridge
+    ipam: 
+     driver: 
+      default
+     config:
+       - subnet: 192.168.8.192/29 #192.168.8.193 - 192.168.8.194 
+    driver_opts:
+      com.docker.network.bridge.name: diaspora_net
+
+
+services:
+
+  db:
+    container_name: nginx-proxy_db
+    image: 'yobasystems/alpine-mariadb:latest'
+    environment:
+      MYSQL_ROOT_PASSWORD: 'diaspora'
+      MYSQL_DATABASE: 'diaspora'
+      MYSQL_USER: 'diaspora'
+      MYSQL_PASSWORD: 'diaspora'
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    networks:
+      - net
+    restart: unless-stopped
+
+
+  redis:
+    image: redis:latest
+    command: redis-server --appendonly yes
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - net
+
+  diaspora:
+    build: 
+      context: docker/diaspora
+      dockerfile: Dockerfile_diaspora
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./data/diaspora:/home/diaspora/
+      - ./data/diaspora/config:/config/
+    ports:
+      - 8234:3000
+    working_dir: /home/diaspora
+    privileged: false
+    networks: 
+      - net
