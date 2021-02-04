@@ -1,0 +1,65 @@
+FROM ruby:2.6
+
+
+RUN apt-get update -y && apt-get install -y \
+bash \
+build-essential \
+git \
+curl \
+gsfonts \
+imagemagick \
+libmagickwand-dev \
+nodejs \
+libssl-dev \
+libcurl4-openssl-dev \
+libxml2-dev \
+libxslt1-dev \
+bcrypt \
+gnupg \
+gnupg2 
+ 
+#create user diaspora instead of root
+RUN adduser --gecos "" --disabled-login --home /home/diaspora diaspora
+
+#copy files needed to create diaspora
+COPY init/run_as_diaspora.sh /run_as_diaspora.sh
+COPY init/docker-diaspora-entrypoint.sh /docker-entrypoint.sh
+
+#change to user diaspora 
+USER diaspora
+
+#get gpgkeys for validation of rvm
+RUN gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+
+#get rmv & put in files
+RUN curl -L https://s.diaspora.software/1t | bash
+RUN echo [[ -s "$HOME/.rvm/scripts/rvm" ]] >> ~/.shrc
+RUN echo [[ -s "$HOME/.rvm/scripts/rvm" ]] >> ~/.bashrc
+RUN $HOME/.rvm/scripts/rvm autolibs read-fail
+RUN $HOME/.rvm/scripts/rvm install 2.6
+
+#go to folder and download diaspora
+RUN cd /home/diaspora
+RUN git clone -b master https://github.com/diaspora/diaspora.git /home/diaspora/diaspora
+RUN cd /home/diaspora/diaspora
+RUN sed -i 's/bcrypt (3.1.13)/bcrypt (3.1.12)/g' /home/diaspora/diaspora/Gemfile.lock
+
+#config
+COPY init/diaspora.yml /home/diaspora/diaspora/config/diaspora.yml
+COPY init/database.yml /home/diaspora/diaspora/config/database.yml
+
+#install dependencies
+RUN gem update --system
+RUN gem install bundler:1.17.3
+RUN /home/diaspora/diaspora/script/configure_bundler
+RUN /home/diaspora/diaspora/bin/bundle install 
+
+RUN /bin/bash -c RAILS_ENV=production /home/diaspora/diaspora/bin/bundle exec rake db:create db:migrate
+RUN /bin/bash -c RAILS_ENV=production /home/diaspora/diaspora/bin/rake assets:precompile
+
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+VOLUME /home/diaspora
+VOLUME /config
+#CMD ["run"]
+

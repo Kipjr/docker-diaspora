@@ -1,11 +1,11 @@
 #!/bin/bash
 
 function do_as_diaspora {
-	su -l -c "cd /home/diaspora/diaspora && RAILS_ENV=production DB=postgres $1" diaspora
+	cd /home/diaspora/diaspora && RAILS_ENV=production DB=MariaDB $1
 }
 
 function setup {
-	su -l diaspora -c "/run_as_diaspora.sh"
+	. /run_as_diaspora.sh
 }
 
 function run {
@@ -44,5 +44,5 @@ elif [ "$1" = 'upgrade' ]; then
 	precompile_assets
 else
 	echo "Not sure what to do; here have a shell"
-	/bin/bash
+	/bin/bash &
 fi

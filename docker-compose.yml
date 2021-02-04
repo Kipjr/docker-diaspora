@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 networks:
   net:
@@ -15,7 +15,7 @@ networks:
 services:
 
   db:
-    container_name: nginx-proxy_db
+    container_name: db
     image: 'yobasystems/alpine-mariadb:latest'
     environment:
       MYSQL_ROOT_PASSWORD: 'diaspora'
@@ -31,6 +31,7 @@ services:
 
   redis:
     image: redis:latest
+    container_name: redis
     command: redis-server --appendonly yes
     volumes:
       - ./data/redis:/data
@@ -38,8 +39,9 @@ services:
       - net
 
   diaspora:
+    container_name: diaspora
     build: 
-      context: docker/diaspora
+      context: .
       dockerfile: Dockerfile_diaspora
     depends_on:
       - db
@@ -50,6 +52,7 @@ services:
     ports:
       - 8234:3000
     working_dir: /home/diaspora
+    #command: setup
     privileged: false
     networks: 
       - net
