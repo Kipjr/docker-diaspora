@@ -1,8 +1,9 @@
-FROM ruby:2.6
+FROM ruby:2.6-slim-buster
 
 
 RUN apt-get update -y && apt-get install -y \
 bash \
+cmake \
 build-essential \
 git \
 curl \
@@ -14,16 +15,13 @@ libssl-dev \
 libcurl4-openssl-dev \
 libxml2-dev \
 libxslt1-dev \
+libpq-dev \
 bcrypt \
 gnupg \
 gnupg2 
  
 #create user diaspora instead of root
 RUN adduser --gecos "" --disabled-login --home /home/diaspora diaspora
-
-#copy files needed to create diaspora
-COPY init/run_as_diaspora.sh /run_as_diaspora.sh
-COPY init/docker-diaspora-entrypoint.sh /docker-entrypoint.sh
 
 #change to user diaspora 
 USER diaspora
@@ -32,7 +30,7 @@ USER diaspora
 RUN gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
 
 #get rmv & put in files
-RUN curl -L https://s.diaspora.software/1t | bash
+RUN unset GEM_HOME ; \curl -L https://s.diaspora.software/1t | bash
 RUN echo [[ -s "$HOME/.rvm/scripts/rvm" ]] >> ~/.shrc
 RUN echo [[ -s "$HOME/.rvm/scripts/rvm" ]] >> ~/.bashrc
 RUN $HOME/.rvm/scripts/rvm autolibs read-fail
@@ -49,17 +47,23 @@ COPY init/diaspora.yml /home/diaspora/diaspora/config/diaspora.yml
 COPY init/database.yml /home/diaspora/diaspora/config/database.yml
 
 #install dependencies
-RUN gem update --system
-RUN gem install bundler:1.17.3
-RUN /home/diaspora/diaspora/script/configure_bundler
-RUN /home/diaspora/diaspora/bin/bundle install 
+RUN RAILS_ENV=production gem update --system
+RUN RAILS_ENV=production gem install bundler:1.17.3
+RUN RAILS_ENV=production gem install pg
+RUN RAILS_ENV=production /home/diaspora/diaspora/script/configure_bundler
+RUN RAILS_ENV=production /home/diaspora/diaspora/bin/bundle install --full-index -j$(getconf _NPROCESSORS_ONLN)
+RUN RAILS_ENV=production /home/diaspora/diaspora/bin/bundle update mysql2
 
-RUN /bin/bash -c RAILS_ENV=production /home/diaspora/diaspora/bin/bundle exec rake db:create db:migrate
-RUN /bin/bash -c RAILS_ENV=production /home/diaspora/diaspora/bin/rake assets:precompile
+#RUN RAILS_ENV=production && cd /home/diaspora/diaspora/bin/ && bundle exec rake db:create db:migrate
+#RUN RAILS_ENV=production && cd /home/diaspora/diaspora/bin/ && rake assets:precompile
 
+#copy files needed to create diaspora
+COPY init/docker-diaspora-entrypoint.sh /docker-entrypoint.sh
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
 VOLUME /home/diaspora
 VOLUME /config
-#CMD ["run"]
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+CMD ["run"]
 

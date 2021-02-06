@@ -2,3 +2,6 @@ data/*
 log
 .DS_Store
 .AppleDouble
+init/database.yml
+init/diaspora.yml
+
